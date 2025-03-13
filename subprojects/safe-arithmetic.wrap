@@ -1,4 +1,4 @@
 [wrap-git]
-url = git@github.com/djazo/safe-arithmetic.git
+url = git@github.com:djazo/safe-arithmetic.git
 revision = meson
 depth = 1
