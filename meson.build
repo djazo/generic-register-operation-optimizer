@@ -18,7 +18,9 @@ async_dep = async_sub.get_variable('async_dep')
 safe_arithmetic_sub = subproject('safe-arithmetic')
 safe_arithmetic_dep = safe_arithmetic_sub.get_variable('safe_arithmetic_dep')
 
+inc = include_directories('include')
+
 groov_dep = declare_dependency(
-  include_directories: groov_inc,
+  include_directories: inc,
   dependencies: [boost_dep, baremetal_concurrency_dep, stdx_dep, async_dep, safe_arithmetic_dep]
   )
