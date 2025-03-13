@@ -6,7 +6,7 @@ project(groov,
 
 boost_dep = dependency('boost', required: true)
 
-intel_cbc_sub = subproject('cpp-bare-metal-concurrency')
+intel_cbc_sub = subproject('cpp-baremetal-concurrency')
 intel_cbc_dep = cbc_sub.get_variable('cbc_dep')
 
 intel_cse_sub = subproject('cpp-std-extensions')
@@ -15,8 +15,8 @@ intel_cse_dep = cse_sub.get_variable('cse_dep')
 intel_cbsar_sub = subproject('cpp-baremetal-senders-and-receivers')
 intel_cbsar_dep = cbsar_sub.get_variable('cbsar_dep')
 
-intel_sa_sub = subproject('safe-arithmetic')
-intel_sa_dep = sa_sub.get_variable('san_dep')
+intel_safe_arithmetic_sub = subproject('safe-arithmetic')
+intel_safe_arithmetic_dep = sa_sub.get_variable('safe_arithmetic_dep')
 
 groov_dep = declare_dependency(
   include_directories: groov_inc,
