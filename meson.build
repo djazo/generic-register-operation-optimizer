@@ -24,3 +24,7 @@ groov_dep = declare_dependency(
   include_directories: inc,
   dependencies: [boost_dep, baremetal_concurrency_dep, stdx_dep, async_dep, safe_arithmetic_dep]
   )
+
+if get_option('build_tests')
+  subdir('test')
+endif
