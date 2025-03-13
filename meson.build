@@ -1,7 +1,7 @@
-project(groov,
+project('groov',
+  ['cpp'],
   version: '0.1.0',
   license: 'BSL-1.0',
-  languages: 'cpp',
   default_options: ['cpp_std=c++20'])
 
 boost_dep = dependency('boost', required: true)
