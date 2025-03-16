@@ -4,7 +4,8 @@ project('groov',
   license: 'BSL-1.0',
   default_options: ['cpp_std=c++20'])
 
-boost_dep = dependency('boost', required: true)
+boostmp11_sub = subproject('boostmp11')
+boostmp11_dep = boostmp11_sub.get_variable('boostmp11_dep')
 
 baremetal_concurrency_sub = subproject('cpp-baremetal-concurrency')
 baremetal_concurrency_dep = baremetal_concurrency_sub.get_variable('baremetal_concurrency_dep')
@@ -22,7 +23,7 @@ inc = include_directories('include')
 
 groov_dep = declare_dependency(
   include_directories: inc,
-  dependencies: [boost_dep, baremetal_concurrency_dep, stdx_dep, async_dep, safe_arithmetic_dep]
+  dependencies: [boostmp11_dep, baremetal_concurrency_dep, stdx_dep, async_dep, safe_arithmetic_dep]
   )
 
 if get_option('build_tests')
