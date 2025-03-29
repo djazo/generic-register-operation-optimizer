@@ -17,3 +17,4 @@ __pycache__
 /subprojects/*/
 !/subprojects/*.wrap
 /subprojects/fmt.wrap
+.meson-subproject-wrap-hash.txt
