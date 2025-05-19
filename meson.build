@@ -20,9 +20,6 @@ stdx_dep = stdx_sub.get_variable('stdx_dep')
 async_sub = subproject('cpp-baremetal-senders-and-receivers')
 async_dep = async_sub.get_variable('async_dep')
 
-safe_arithmetic_sub = subproject('safe-arithmetic')
-safe_arithmetic_dep = safe_arithmetic_sub.get_variable('safe_arithmetic_dep')
-
 inc = include_directories('include')
 
 groov_dep = declare_dependency(
