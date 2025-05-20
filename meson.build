@@ -29,6 +29,5 @@ groov_dep = declare_dependency(
         baremetal_concurrency_dep,
         stdx_dep,
         async_dep,
-        safe_arithmetic_dep,
     ],
 )
