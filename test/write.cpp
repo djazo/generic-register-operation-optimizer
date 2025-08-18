@@ -251,9 +251,64 @@ using G_enum = groov::group<"group", bus, R_enum>;
 constexpr auto grp_enum = G_enum{};
 } // namespace
 
-TEST_CASE("write an enum field", "[read]") {
+TEST_CASE("write an enum field", "[write]") {
     using namespace groov::literals;
     data_enum = 0u;
     CHECK(sync_write(grp_enum("reg.field"_f = E::C)));
     CHECK(data_enum == 0b10u);
+}
+
+namespace {
+enum struct EnableTest : std::uint8_t { DISABLE = 0, ENABLE = 1 };
+using F_enum_enable = groov::field<"field", EnableTest, 0, 0>;
+
+using R_enum_enable = groov::reg<"reg", std::uint32_t, &data_enum,
+                                 groov::w::replace, F_enum_enable>;
+
+using G_enum_enable = groov::group<"group", bus, R_enum_enable>;
+constexpr auto grp_enum_enable = G_enum_enable{};
+} // namespace
+
+TEST_CASE("enable an enum field", "[write]") {
+    using namespace groov::literals;
+    data_enum = 0u;
+    CHECK(sync_write(grp_enum_enable("reg.field"_f = groov::enable)));
+    CHECK(data_enum == 0b1u);
+}
+
+TEST_CASE("disable an enum field", "[write]") {
+    using namespace groov::literals;
+    data_enum = 1u;
+    CHECK(sync_write(grp_enum_enable("reg.field"_f = groov::disable)));
+    CHECK(data_enum == 0u);
+}
+
+TEST_CASE("enable with field_proxy", "[write]") {
+    using namespace groov::literals;
+    data_enum = 0u;
+    auto r = async::just(grp_enum_enable / "reg"_r) //
+             | groov::read()                        //
+             | async::then([](auto spec) {
+                   spec["reg.field"_r] = groov::enable;
+                   return spec;
+               })             //
+             | groov::write() //
+             | async::sync_wait();
+    CHECK(r);
+    CHECK(data_enum == 0b1u);
+}
+
+TEST_CASE("disable with field_proxy", "[write]") {
+    using namespace groov::literals;
+    data_enum = 1u;
+    auto r = async::just(grp_enum_enable / "reg"_r) //
+             | groov::read()                        //
+             | async::then([](auto spec) {
+                   spec["reg.field"_r] = groov::disable;
+                   return spec;
+               })             //
+             | groov::write() //
+             | async::sync_wait();
+    CHECK(r);
+    CHECK(data_enum == 0u);
 }
