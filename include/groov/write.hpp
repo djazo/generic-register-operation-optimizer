@@ -18,15 +18,13 @@
 #include <type_traits>
 #include <utility>
 
-template <typename...> struct undef;
-template <auto...> struct undef_v;
-
 namespace groov {
 namespace detail {
 template <typename Register, typename Bus, auto Mask, auto IdMask, auto IdValue,
           typename V>
 auto write(V value) -> async::sender auto {
-    return Bus::template write<Mask, IdMask, IdValue>(Register::address, value);
+    return Bus::template write<Mask, IdMask, IdValue>(get_address<Register>(),
+                                                      value);
 }
 
 template <typename Reg, typename ObjList>
@@ -47,7 +45,7 @@ using compute_reg_id_mask_t =
 
 template <typename Reg>
 using compute_reg_id_value_t =
-    std::integral_constant<typename Reg::type_t, Reg::unused_identity>;
+    std::integral_constant<typename Reg::type_t, Reg::unused_identity_value>;
 
 template <typename F> CONSTEVAL auto check_readonly_field() {
     STATIC_ASSERT(not read_only_write_function<typename F::write_fn_t>,

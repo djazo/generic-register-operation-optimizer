@@ -97,18 +97,21 @@ template <stdx::ct_string Name, typename T, std::size_t Msb, std::size_t Lsb,
 struct field : named_container<Name, SubFields...> {
     using type_t = T;
     using write_fn_t = WriteFn;
-    using id_spec_t = typename write_fn_t::id_spec;
 
     template <std::unsigned_integral RegType>
     constexpr static auto mask = stdx::bit_mask<RegType, Msb, Lsb>();
 
-    template <std::unsigned_integral RegType>
-    constexpr static auto identity_mask =
-        detail::compute_identity_mask<id_spec_t, RegType, Msb, Lsb>();
+    constexpr static auto field_mask = static_cast<type_t>(
+        stdx::bit_mask<stdx::underlying_type_t<type_t>, Msb - Lsb>());
 
     template <std::unsigned_integral RegType>
-    constexpr static auto identity =
-        detail::compute_identity<id_spec_t, RegType, identity_mask<RegType>>();
+    constexpr static auto identity_mask =
+        detail::compute_identity_mask<write_fn_t, RegType, Msb, Lsb>();
+
+    template <std::unsigned_integral RegType>
+    constexpr static auto identity_value =
+        detail::compute_identity_value<write_fn_t, RegType,
+                                       identity_mask<RegType>>();
 
     template <std::unsigned_integral RegType>
     constexpr static auto extract(RegType value) -> type_t {
@@ -126,19 +129,32 @@ struct field : named_container<Name, SubFields...> {
     }
 };
 
+namespace detail {
+template <typename T> constexpr auto maybe_invoke(T value) {
+    if constexpr (requires { value(); } and not requires { T::value; }) {
+        return value();
+    } else {
+        return value;
+    }
+}
+} // namespace detail
+template <typename R> constexpr auto get_address() {
+    return detail::maybe_invoke(R::address);
+}
+
 template <stdx::ct_string Name, std::unsigned_integral T, auto Address,
           write_function WriteFn = w::replace, fieldlike... Fields>
 struct reg : field<Name, T, std::numeric_limits<T>::digits - 1, 0u, WriteFn,
                    Fields...> {
-    using address_t = decltype(Address);
+    using address_t = decltype(detail::maybe_invoke(Address));
     constexpr static auto address = Address;
 
     constexpr static T unused_mask =
-        identity_spec<typename reg::id_spec_t>
+        identity_write_function<WriteFn>
             ? reg::template mask<T> & ~(T{} | ... | Fields::template mask<T>)
             : T{};
-    constexpr static auto unused_identity =
-        detail::compute_identity<typename reg::id_spec_t, T, unused_mask>();
+    constexpr static auto unused_identity_value =
+        detail::compute_identity_value<WriteFn, T, unused_mask>();
 
     template <std::same_as<T> RegType>
     constexpr static auto extract(RegType value) {
@@ -162,15 +178,17 @@ template <typename Reg> struct reg_with_value : Reg {
 template <typename T>
 concept registerlike = fieldlike<T> and requires {
     typename T::address_t;
-    { T::address } -> std::same_as<typename T::address_t const &>;
+    { get_address<T>() } -> std::same_as<typename T::address_t>;
 };
 
 template <typename T, typename Reg>
 concept bus_for = requires(typename Reg::type_t data) {
-    { T::template read<typename Reg::type_t{}>(Reg::address) } -> async::sender;
+    {
+        T::template read<typename Reg::type_t{}>(get_address<Reg>())
+    } -> async::sender;
     {
         T::template write<typename Reg::type_t{}, typename Reg::type_t{},
-                          typename Reg::type_t{}>(Reg::address, data)
+                          typename Reg::type_t{}>(get_address<Reg>(), data)
     } -> async::sender;
 };
 
@@ -254,9 +272,9 @@ template <typename Reg> struct id_mask_q {
 
 template <typename Reg> struct id_value_q {
     template <typename Obj>
-    using fn =
-        std::integral_constant<typename Reg::type_t,
-                               Obj::template identity<typename Reg::type_t>>;
+    using fn = std::integral_constant<
+        typename Reg::type_t,
+        Obj::template identity_value<typename Reg::type_t>>;
 };
 
 template <typename ObjList, template <typename...> typename QFn, typename Reg>
@@ -297,4 +315,8 @@ struct enable_t {};
 constexpr auto enable = enable_t{};
 struct disable_t {};
 constexpr auto disable = disable_t{};
+struct set_t {};
+constexpr auto set = set_t{};
+struct clear_t {};
+constexpr auto clear = clear_t{};
 } // namespace groov
