@@ -19,7 +19,7 @@ struct bus {
     static inline int num_writes{};
     static inline std::uint32_t last_mask{};
 
-    template <auto Mask, auto IdMask, auto IdValue>
+    template <stdx::ct_string, auto Mask, auto IdMask, auto IdValue>
     static auto write(auto addr, auto value) -> async::sender auto {
         return async::just_result_of([=] {
             ++num_writes;
@@ -29,7 +29,8 @@ struct bus {
         });
     }
 
-    template <auto Mask> static auto read(auto addr) -> async::sender auto {
+    template <stdx::ct_string, auto Mask>
+    static auto read(auto addr) -> async::sender auto {
         return async::just_result_of([=] {
             ++num_reads;
             last_mask = Mask;
@@ -60,10 +61,31 @@ TEST_CASE("write a register", "[write]") {
     CHECK(data0 == 0xa5a5'a5a5u);
 }
 
+TEST_CASE("write with passthrough", "[write]") {
+    using namespace groov::literals;
+    data0 = 0;
+    auto value =
+        groov::write(grp("reg0"_r = 0xa5a5'a5a5u), 42, 17) | async::sync_wait();
+    CHECK(value);
+    CHECK(get<0>(*value) == 42);
+    CHECK(get<1>(*value) == 17);
+    CHECK(data0 == 0xa5a5'a5a5u);
+}
+
 TEST_CASE("sync_write a register", "[write]") {
     using namespace groov::literals;
     data0 = 0;
     CHECK(sync_write(grp("reg0"_r = 0xa5a5'a5a5u)));
+    CHECK(data0 == 0xa5a5'a5a5u);
+}
+
+TEST_CASE("sync_write with passthrough", "[write]") {
+    using namespace groov::literals;
+    data0 = 0;
+    auto value = sync_write(grp("reg0"_r = 0xa5a5'a5a5u), 42, 17);
+    CHECK(value);
+    CHECK(get<0>(*value) == 42);
+    CHECK(get<1>(*value) == 17);
     CHECK(data0 == 0xa5a5'a5a5u);
 }
 
@@ -142,11 +164,33 @@ TEST_CASE("write is pipeable", "[write]") {
     CHECK(data0 == 0xa5a5'a5a5u);
 }
 
+TEST_CASE("write is pipeable with passthrough", "[write]") {
+    using namespace groov::literals;
+    data0 = 0;
+    auto r = async::just(grp("reg0"_r = 0xa5a5'a5a5u)) | groov::write(42, 17) |
+             async::sync_wait();
+    CHECK(r);
+    CHECK(get<0>(*r) == 42);
+    CHECK(get<1>(*r) == 17);
+    CHECK(data0 == 0xa5a5'a5a5u);
+}
+
 TEST_CASE("sync_write is pipeable", "[write]") {
     using namespace groov::literals;
     data0 = 0;
     auto r = async::just(grp("reg0"_r = 0xa5a5'a5a5u)) | groov::sync_write();
     CHECK(r);
+    CHECK(data0 == 0xa5a5'a5a5u);
+}
+
+TEST_CASE("sync_write is pipeable with passthrough", "[write]") {
+    using namespace groov::literals;
+    data0 = 0;
+    auto r =
+        async::just(grp("reg0"_r = 0xa5a5'a5a5u)) | groov::sync_write(42, 17);
+    CHECK(r);
+    CHECK(get<0>(*r) == 42);
+    CHECK(get<1>(*r) == 17);
     CHECK(data0 == 0xa5a5'a5a5u);
 }
 
@@ -178,11 +222,12 @@ namespace {
 template <auto Addr> std::uint32_t data{};
 
 struct ct_address_bus {
-    template <auto Mask, typename T> static auto read(T) -> async::sender auto {
+    template <stdx::ct_string, auto Mask, typename T>
+    static auto read(T) -> async::sender auto {
         return async::just_result_of([=] { return data<T::value>; });
     }
 
-    template <auto Mask, auto IdMask, auto IdValue, typename T>
+    template <stdx::ct_string, auto Mask, auto IdMask, auto IdValue, typename T>
     static auto write(T, auto value) -> async::sender auto {
         return async::just_result_of([=] {
             auto prev = data<T::value> & ~(Mask | IdMask);
@@ -207,12 +252,14 @@ struct bus_u8 {
     struct dummy_sender {
         using is_sender = void;
     };
-    template <auto> static auto read(auto) -> async::sender auto {
+    template <stdx::ct_string, auto>
+    static auto read(auto) -> async::sender auto {
         return dummy_sender{};
     }
 
-    template <auto Mask, auto IdMask, auto IdValue>
+    template <stdx::ct_string Name, auto Mask, auto IdMask, auto IdValue>
     static auto write(auto addr, auto value) -> async::sender auto {
+        STATIC_REQUIRE(Name == stdx::ct_string{"reg"});
         return async::just_result_of([=] {
             auto prev = *addr & ~(Mask | IdMask);
             *addr = static_cast<std::uint8_t>(prev | value | IdValue);
