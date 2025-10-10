@@ -18,3 +18,4 @@ __pycache__
 !/subprojects/*.wrap
 /subprojects/fmt.wrap
 .meson-subproject-wrap-hash.txt
+docs/mermaid.conf
